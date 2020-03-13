@@ -14,10 +14,17 @@ let kExitUser = "exitUser"
 let kUserList = "userList"
 let kNewChatMessage = "newChatMessage"
 let kChatMessage = "chatMessage"
+let kStartType = "startType"
+let kStopType = "stopType"
+let kUserTypingUpdate = "userTypingUpdate"
 
 typealias CompletionHandler = () -> Void
 typealias UserCompletionHandler = (Result<[User], Error>) -> Void
 typealias MessageCompletionHandler = (Message) -> Void
+
+extension Notification.Name {
+    static let userTyping = Notification.Name("userTypingNotification")
+}
 
 final class SocketHelper: NSObject {
     static var shared = SocketHelper()
@@ -45,6 +52,7 @@ final class SocketHelper: NSObject {
     
     func joinChatRoom(name: String, completion: CompletionHandler) {
         _socket?.emit(kConnectUser, name)
+        listenForOtherMessages()
         completion()
     }
     
@@ -94,4 +102,18 @@ final class SocketHelper: NSObject {
         _socket?.emit(kChatMessage, nickname, message)
     }
 
+    func sendStartTypingMessage(nickname: String) {
+        _socket?.emit(kStartType, nickname)
+    }
+    
+    func sendStopTypingMessage(nickname: String) {
+        _socket?.emit(kStopType, nickname)
+    }
+    
+    private func listenForOtherMessages() {
+        _socket?.on(kUserTypingUpdate, callback: { (result, ack) in
+            NotificationCenter.default.post(name: .userTyping, object: result[0] as? [String : AnyObject])
+        })
+    }
+    
 }

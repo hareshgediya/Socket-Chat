@@ -20,6 +20,8 @@ class ChatMessagesViewController: MessagesViewController, MessagesDataSource {
         
         configureMessageInputBar()
         configureMessageCollectionView()
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(handleUserTyping(_:)), name: .userTyping, object: nil)
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -82,6 +84,21 @@ class ChatMessagesViewController: MessagesViewController, MessagesDataSource {
         return messagesCollectionView.indexPathsForVisibleItems.contains(lastIndexPath)
     }
     
+    @objc func handleUserTyping(_ notification: Notification) {
+        if let dict = notification.object as? [String : AnyObject] {
+            var names = ""
+            var totalTypingUsers = 0
+            for (typingUser, _) in dict {
+                if typingUser != currentUser!.nickname {
+                    names = (names == "") ? typingUser : "\(names), \(typingUser)"
+                    totalTypingUsers += 1
+                }
+            }
+            
+            setTypingIndicatorViewHidden(!(totalTypingUsers > 0), animated: true)
+        }
+    }
+    
     func currentSender() -> SenderType {
         return currentUser!
     }
@@ -128,6 +145,15 @@ extension ChatMessagesViewController: InputBarAccessoryViewDelegate {
             }
         }
     }
+    
+    func inputBar(_ inputBar: InputBarAccessoryView, textViewTextDidChangeTo text: String) {
+        if text.isEmpty {
+            SocketHelper.shared.sendStopTypingMessage(nickname: currentUser!.nickname)
+        } else {
+            SocketHelper.shared.sendStartTypingMessage(nickname: currentUser!.nickname)
+        }
+    }
+
 }
 
 extension ChatMessagesViewController: MessageCellDelegate, MessagesLayoutDelegate, MessagesDisplayDelegate {
